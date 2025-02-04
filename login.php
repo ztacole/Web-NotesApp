@@ -31,13 +31,17 @@
 include 'data/controller/UserController.php';
 include 'util/CoreFunction.php';
 
+// Memeriksa metode permintaan
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Mengambil data dari form
     $email = $_POST['email'];
     $password = $_POST['password'];
 
+    // Memanggil fungsi login
     $userController = new UserController();
     $result = $userController->login($email, $password);
 
+    // Memeriksa hasil login
     if (is_string($result)) {
         ?>
         <script>alert("<?php echo $result; ?>");</script>

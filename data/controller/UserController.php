@@ -7,9 +7,11 @@ class UserController
 {
     private $connection = null;
     public function __construct() {
+        //Koneksi ke database
         $this->connection = Connection::connect();
     }
 
+    //Fungsi login
     public function login(string $email, string $password): User|string
     {
         $statement = $this->connection->prepare("SELECT * FROM user WHERE email = :email");
@@ -28,6 +30,7 @@ class UserController
         return $user;
     }
 
+    //Fungsi register
     public function register(string $email, string $password): bool
     {
         $checkStmt = $this->connection->prepare("SELECT COUNT(*) FROM user WHERE email = :email");

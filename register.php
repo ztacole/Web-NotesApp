@@ -40,21 +40,27 @@
 include 'data/controller/UserController.php';
 include 'util/CoreFunction.php';
 
+// Memeriksa metode permintaan
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Mengambil data dari form
     $email = $_POST['email'];
     $password = $_POST['password'];
     $confirmPassword = $_POST['confirm-password'];
 
+    // Memvalidasi email
     if (!CoreFunction::validatePassword($password)) {
         die("Password must contain at least 8 characters, including at least one uppercase letter, one lowercase letter, one number, and one special character.");
     }
 
+    // Memvalidasi konfirmasi password
     if ($password !== $confirmPassword) {
         die("Passwords do not match.");
     }
 
+    // Memhash password
     $hashedPassword = CoreFunction::hashPassword($password);
 
+    // Memanggil fungsi register
     $userController = new UserController();
     if ($userController->register($email, $hashedPassword)) {
         ?>

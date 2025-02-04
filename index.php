@@ -18,6 +18,7 @@ if (!isset($_SESSION['email'])) {
         body {
             padding-top: 70px;
         }
+
         .add-note-btn {
             position: fixed;
             bottom: 20px;
@@ -30,9 +31,11 @@ if (!isset($_SESSION['email'])) {
             padding-top: 0px;
             z-index: 1030;
         }
+
         .card {
             cursor: pointer;
         }
+
         .nav-link {
             color: aliceblue;
         }
@@ -77,11 +80,11 @@ if (!isset($_SESSION['email'])) {
                     <form id="noteForm">
                         <div class="mb-3">
                             <label for="noteTitle" class="form-label">Judul</label>
-                            <input type="text" class="form-control" id="noteTitle" required>
+                            <input type="text" class="form-control" id="noteTitle">
                         </div>
                         <div class="mb-3">
                             <label for="noteContent" class="form-label">Isi Catatan</label>
-                            <textarea class="form-control" id="noteContent" rows="3" required></textarea>
+                            <textarea class="form-control" id="noteContent" rows="3"></textarea>
                         </div>
                         <button type="submit" data-bs-dismiss="modal" class="btn btn-primary w-100">Simpan</button>
                     </form>
@@ -108,24 +111,61 @@ if (!isset($_SESSION['email'])) {
         </div>
     </div>
 
+    <!-- Modal Edit Catatan -->
+    <div class="modal fade" id="editNoteModal" tabindex="-1" aria-labelledby="editNoteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editNoteModalLabel">Edit Catatan</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editNoteForm">
+                        <input type="hidden" id="editNoteId">
+                        <div class="mb-3">
+                            <label for="editNoteTitle" class="form-label">Judul</label>
+                            <input type="text" class="form-control" id="editNoteTitle">
+                        </div>
+                        <div class="mb-3">
+                            <label for="editNoteContent" class="form-label">Isi Catatan</label>
+                            <textarea class="form-control" id="editNoteContent" rows="3"></textarea>
+                        </div>
+                        <button type="submit" data-bs-dismiss="modal" class="btn btn-primary w-100">Simpan
+                            Perubahan</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             loadNotes();
 
+            // Event listener untuk tombol "Tambah Catatan"
             document.getElementById("noteForm").addEventListener("submit", function (event) {
                 event.preventDefault();
 
-                let title = document.getElementById("noteTitle").value;
+                let title = document.getElementById("noteTitle").value || 'Tak Berjudul';
                 let content = document.getElementById("noteContent").value;
 
-                if (title && content) {
-                    fetch('process/addNotes.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ title: title, content: content })
-                    })
+                if (!content) {
+                    alert("Catatan harus diisi.");
+                    return;
+                }
+
+                if (!validateNotes(title, content)) {
+                    alert("Judul dan isi catatan tidak boleh mengandung karakter spesial.");
+                    return;
+                }
+
+                fetch('process/addNotes.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ title: title, content: content })
+                })
                     .then(response => response.json())
                     .then(data => {
                         if (data.status === 'success') {
@@ -138,15 +178,15 @@ if (!isset($_SESSION['email'])) {
                         console.error('Error:', error);
                     });
 
-                    document.getElementById("noteForm").reset();
-                    let modal = new bootstrap.Modal(document.getElementById("noteModal"));
-                    modal.hide();
+                document.getElementById("noteForm").reset();
+                let modal = new bootstrap.Modal(document.getElementById("noteModal"));
+                modal.hide();
 
-                    loadNotes();
-                }
+                loadNotes();
             });
         });
 
+        // Function to load notes
         function loadNotes() {
             let notesContainer = document.getElementById("notesContainer");
             notesContainer.innerHTML = "";
@@ -164,9 +204,10 @@ if (!isset($_SESSION['email'])) {
                                 <div class="col-md-4 mb-3">
                                     <div class="card shadow-sm" onclick="viewNote('${note.title}', '${note.content}')">
                                         <div class="card-body">
-                                            <h5 class="card-title">${note.title.substring(0, 20)}${note.content.length > 100 ? '...' : ''}</h5>
-                                            <p class="card-text">${note.content.substring(0, 40)}${note.content.length > 100 ? '...' : ''}</p>
+                                            <h5 class="card-title">${note.title.substring(0, 20)}${note.title.length > 20 ? '...' : ''}</h5>
+                                            <p class="card-text">${note.content.substring(0, 40)}${note.content.length > 40 ? '...' : ''}</p>
                                             <button class="btn btn-danger btn-sm" onclick="deleteNote(${note.id}); event.stopPropagation();">Hapus</button>
+                                            <button class="btn btn-warning btn-sm" onclick="updateNote(${note.id}, '${note.title}', '${note.content}'); event.stopPropagation();">Ubah</button>
                                         </div>
                                     </div>
                                 </div>
@@ -180,12 +221,14 @@ if (!isset($_SESSION['email'])) {
                 });
         }
 
+        //View Note
         function viewNote(title, content) {
             document.getElementById('viewNoteModalLabel').textContent = title;
             document.getElementById('viewNoteContent').textContent = content;
             new bootstrap.Modal(document.getElementById('viewNoteModal')).show();
         }
 
+        //Delete Note
         function deleteNote(id) {
             fetch('process/deleteNotes.php', {
                 method: 'POST',
@@ -194,22 +237,83 @@ if (!isset($_SESSION['email'])) {
                 },
                 body: JSON.stringify({ idNote: id })
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    alert("Catatan berhasil dihapus.");
-                } else {
-                    alert("Catatan gagal dihapus.");
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert("Catatan berhasil dihapus.");
+                    } else {
+                        alert("Catatan gagal dihapus.");
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
             loadNotes();
         }
-    </script>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        //Update Note
+        function updateNote(id, title, content) {
+            document.getElementById('editNoteId').value = id;
+            document.getElementById('editNoteTitle').value = title;
+            document.getElementById('editNoteContent').value = content;
+
+            new bootstrap.Modal(document.getElementById('editNoteModal')).show();
+        }
+
+        //Submit Edit Note
+        document.getElementById("editNoteForm").addEventListener("submit", function (event) {
+            event.preventDefault();
+
+            let id = document.getElementById("editNoteId").value;
+            let title = document.getElementById("editNoteTitle").value || 'Tak Berjudul';
+            let content = document.getElementById("editNoteContent").value;
+
+            if (!content) {
+                alert("Catatan harus diisi.");
+                return;
+            }
+
+            if (!validateNotes(title, content)) {
+                alert("Judul dan isi catatan tidak boleh mengandung karakter spesial.");
+                return;
+            }
+
+            fetch('process/updateNotes.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ idNote: id, title: title, content: content })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert("Catatan berhasil diperbarui.");
+                    } else {
+                        alert("Gagal memperbarui catatan.");
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+
+            let modal = new bootstrap.Modal(document.getElementById("editNoteModal"));
+            modal.hide();
+            loadNotes();
+        });
+
+        // Function to validate notes input
+        function validateNotes(title, content) {
+            var regex = /[-_#$%^&*|<>]/;
+
+            if (regex.test(title) || regex.test(content)) {
+                return false;
+            } else {
+                return true;
+            }
+        }
+
+    </script>
 </body>
 
 </html>

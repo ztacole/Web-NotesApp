@@ -2,6 +2,7 @@
 
 class Connection
 {
+    //Koneksi ke database
     public static function connect()
     {
         $host = 'localhost';
